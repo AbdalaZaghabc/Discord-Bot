@@ -48,11 +48,12 @@ class music_cog(commands.Cog):
             m_url = self.music_queue[0][0]['source']
 
             #remove the first element as you are currently playing it
-            self.music_queue.pop(0)
+            
             loop = asyncio.get_event_loop()
             data = await loop.run_in_executor(None, lambda: self.ytdl.extract_info(m_url, download=False))
             song = data['url']
             self.vc.play(discord.FFmpegPCMAudio(song, executable= "ffmpeg.exe", **self.FFMPEG_OPTIONS), after=lambda e: asyncio.run_coroutine_threadsafe(self.play_next(), self.bot.loop))
+            self.music_queue.pop(0)
         else:
             self.is_playing = False
 
