@@ -4,6 +4,7 @@ from discord.ext import commands
 from youtubesearchpython import VideosSearch
 from yt_dlp import YoutubeDL
 import asyncio
+import gc
 
 class music_cog(commands.Cog):
     def __init__(self, bot):
@@ -55,6 +56,10 @@ class music_cog(commands.Cog):
         else:
             self.is_playing = False
 
+            # Cleanup after song
+        del data  # Free memory used for song data
+        gc.collect()  # Force garbage collection
+
     # infinite loop checking 
     async def play_music(self, ctx):
         if len(self.music_queue) > 0:
@@ -78,6 +83,10 @@ class music_cog(commands.Cog):
             song = data['url']
             self.vc.play(discord.FFmpegPCMAudio(song, executable= "ffmpeg.exe", **self.FFMPEG_OPTIONS), after=lambda e: asyncio.run_coroutine_threadsafe(self.play_next(), self.bot.loop))
 
+
+            # Cleanup after song
+            del data  # Free memory used for song data
+            gc.collect()  # Force garbage collection
         else:
             self.is_playing = False
 
@@ -147,6 +156,9 @@ class music_cog(commands.Cog):
             self.vc.stop()
         self.music_queue = []
         await ctx.send("```Music queue cleared```")
+        
+        # Trigger garbage collection
+        gc.collect()
 
     @commands.command(name="stop", aliases=["disconnect", "d"], help="Kick the bot from VC")
     async def dc(self, ctx):
