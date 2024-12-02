@@ -65,31 +65,37 @@ class music_cog(commands.Cog):
     async def play_music(self, ctx):
         if len(self.music_queue) > 0:
             self.is_playing = True
-
             m_url = self.music_queue[0][0]['source']
-            #try to connect to voice channel if you are not already connected
-            if self.vc == None or not self.vc.is_connected():
-                self.vc = await self.music_queue[0][1].connect()
 
-                #in case we fail to connect
-                if self.vc == None:
-                    await ctx.send("```Could not connect to the voice channel```")
-                    return
-            else:
-                await self.vc.move_to(self.music_queue[0][1])
-            #remove the first element as you are currently playing it
-            self.music_queue.pop(0)
-            loop = asyncio.get_event_loop()
-            data = await loop.run_in_executor(None, lambda: self.ytdl.extract_info(m_url, download=False))
-            song = data['url']
-            self.vc.play(discord.FFmpegPCMAudio(song, executable= "ffmpeg.exe", **self.FFMPEG_OPTIONS), after=lambda e: asyncio.run_coroutine_threadsafe(self.play_next(), self.bot.loop))
+            try:
+                if self.vc is None or not self.vc.is_connected():
+                    print(f"Connecting to channel: {self.music_queue[0][1].name}")
+                    self.vc = await self.music_queue[0][1].connect()
+                    print(f"Successfully connected to: {self.music_queue[0][1].name}")
+                else:
+                    print("Bot is already connected to a voice channel.")
+                    await self.vc.move_to(self.music_queue[0][1])
 
+                print(f"Attempting to play: {m_url}")
+                loop = asyncio.get_event_loop()
+                data = await loop.run_in_executor(None, lambda: self.ytdl.extract_info(m_url, download=False))
+                song = data['url']
+                print(f"Playing song: {data['title']} - URL: {song}")
 
-            # Cleanup after song
-            del data  # Free memory used for song data
-            gc.collect()  # Force garbage collection
+                self.vc.play(
+                    discord.FFmpegPCMAudio(song, executable="ffmpeg.exe", **self.FFMPEG_OPTIONS),
+                    after=lambda e: asyncio.run_coroutine_threadsafe(self.play_next(), self.bot.loop)
+                )
+            except Exception as e:
+                print(f"Error in play_music: {e}")
+                await ctx.send("Failed to play the song.")
+            finally:
+                self.music_queue.pop(0)
+                del data
+                gc.collect()
         else:
             self.is_playing = False
+            print("No more songs in the queue.")
 
     @commands.command(name="play", aliases=["p", "playing"], help="Plays a selected song from YouTube")
     async def play(self, ctx, *args):
